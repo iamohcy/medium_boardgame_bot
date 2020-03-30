@@ -57,11 +57,15 @@ POINTS_ARRAY = [10,5,2]
 NON_MAIN_POINTS = 1 # points the non main players get for matching with main players
 NUM_ROUNDS = len(POINTS_ARRAY)
 
+
+def points(update, context):
+    printScore(context.chat_data, update.message.chat_id, context.bot)
+
 def printScore(chat_data, chat_id, chat_bot):
     # print points
     pointsText = "<b>Current points:</b>\n"
     for player in chat_data["playersArray"]:
-        pointsText += "%s: %d points" % (player["name"], player["points"])
+        pointsText += "%s: %d points\n" % (player["name"], player["points"])
     chat_bot.send_message(chat_id=chat_id, text=pointsText, parse_mode=telegram.ParseMode.HTML)
 
 def sendWordRequest(chat_data, chat_id, chat_bot):
@@ -248,7 +252,7 @@ def main():
     dispatcher.add_handler(CommandHandler('e',enter))
     dispatcher.add_handler(CommandHandler('help',help))
     dispatcher.add_handler(CommandHandler('stop',stop))
-    dispatcher.add_handler(CommandHandler('points',printScore))
+    dispatcher.add_handler(CommandHandler('points',points))
     dispatcher.add_handler(CommandHandler('left',playersLeft))
 
     # dispatcher.add_handler(CommandHandler('put', put))
