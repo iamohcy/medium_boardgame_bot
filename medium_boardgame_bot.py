@@ -25,6 +25,11 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def deregister_user(update, context):
+
+    if ("gameStarted" not in context.chat_data):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
+        return
+
     userId = update.message.from_user.id
     player = context.chat_data["playersDict"][userId]
     player["inGame"] = False
@@ -42,6 +47,11 @@ def deregister_user(update, context):
         stop(update, context)
 
 def register_user(update, context):
+
+    if ("gameStarted" not in context.chat_data):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
+        return
+
     userId = update.message.from_user.id
     name = update.message.from_user.first_name
 
@@ -73,6 +83,11 @@ def register_user(update, context):
     #     context.bot.send_message(chat_id=update.message.chat_id, text="Game has not yet started!", parse_mode=telegram.ParseMode.HTML)
 
 def players_left(update, context):
+
+    if ("gameStarted" not in context.chat_data):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
+        return
+
     if (len(context.chat_data["playersArray"]) < 2):
         context.bot.send_message(chat_id=update.message.chat_id, text="Waiting for game to begin!", parse_mode=telegram.ParseMode.HTML)
     else:
@@ -87,8 +102,12 @@ POINTS_ARRAY = [10,5,2]
 NON_MAIN_POINTS = 1 # points the non main players get for matching with main players
 NUM_ROUNDS = len(POINTS_ARRAY)
 
-
 def points(update, context):
+
+    if ("gameStarted" not in context.chat_data):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
+        return
+
     printScore(context.chat_data, update.message.chat_id, context.bot)
 
 def printScore(chat_data, chat_id, chat_bot):
@@ -154,20 +173,20 @@ def handleNewRound(chat_data, chat_id, chat_bot):
     sendWordRequestToAll(chat_data, chat_id, chat_bot)
 
 def begin(update, context):
-    if ("gameStarted" in context.chat_data):
-        if (context.chat_data["gameStarted"]):
-            context.bot.send_message(chat_id=update.message.chat_id, text="Game has already begun!", parse_mode=telegram.ParseMode.HTML)
-        elif (len(context.chat_data["playersArray"]) < 2):
-            context.bot.send_message(chat_id=update.message.chat_id, text="You need at least 2 players to begin a game!", parse_mode=telegram.ParseMode.HTML)
-        else:
-            context.chat_data["gameStarted"] = True
-            context.chat_data["currentRound"] = 0
-            context.chat_data["subRound"] = 0
-
-            handleNewRound(context.chat_data, update.message.chat_id, context.bot)
-    else:
+    if ("gameStarted" not in context.chat_data):
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
+        return
 
+    if (context.chat_data["gameStarted"]):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Game has already begun!", parse_mode=telegram.ParseMode.HTML)
+    elif (len(context.chat_data["playersArray"]) < 2):
+        context.bot.send_message(chat_id=update.message.chat_id, text="You need at least 2 players to begin a game!", parse_mode=telegram.ParseMode.HTML)
+    else:
+        context.chat_data["gameStarted"] = True
+        context.chat_data["currentRound"] = 0
+        context.chat_data["subRound"] = 0
+
+        handleNewRound(context.chat_data, update.message.chat_id, context.bot)
 
 def new_game(update, context):
 
@@ -193,6 +212,12 @@ def help(update, context):
     context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode=telegram.ParseMode.HTML)
 
 def stop(update, context):
+
+    if ("gameStarted" not in context.chat_data):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
+        return
+
+
     pointsText = "Game ended!\n-----------------------\nCurrent points:\n"
     currentMaxPoints = -1
     winners = []
