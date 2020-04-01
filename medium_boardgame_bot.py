@@ -50,6 +50,8 @@ def kick_idle(update, context):
 
 def kickPlayer(userId, update, context, forced):
     chat_data = context.chat_data
+    chat_id = update.message.chat_id
+    chat_bot = context.bot
 
     player = chat_data["playersDict"][userId]
     player["inGame"] = False
@@ -68,6 +70,9 @@ def kickPlayer(userId, update, context, forced):
     if numPlayersStillInGame < 2:
         context.bot.send_message(chat_id=update.message.chat_id, text="Not enough players to continue the game! Stopping game...", parse_mode=telegram.ParseMode.HTML)
         stop(update, context)
+        return
+    else:
+        checkForAllEntered(chat_data, chat_id, chat_bot)
 
 def deregister_user(update, context):
 
@@ -104,7 +109,6 @@ def register_user(update, context):
 
         # TEMP
         if name == "Wee Loong":
-            player["points"] = -9999999999999
             player["name"] = "To Wee Or Not To Wee That Is The Question"
 
         context.chat_data["playersArray"].append(player)
@@ -186,6 +190,9 @@ def sendWordRequestToAll(chat_data, chat_id, chat_bot):
         sendWordRequest(player, chat_data, chat_bot)
 
 def handleNewRound(chat_data, chat_id, chat_bot):
+
+    for player in chat_data["playersArray"]:
+        player["entry"] = None
 
     if (chat_data["subRound"] == 0):
         (wordA, wordB) = getWords()
@@ -347,7 +354,7 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
             for player in chat_data["playersArray"]:
                 if player["inGame"] and (not player["isMainPlayer"]):
                     entry = player["entry"]
-                    if entry.lower() == chat_data["player1"]["entry"].lower() or entry.lower() == chat_data["player2"]["entry"].lower():
+                    if (chat_data["player1"]["inGame"] and entry.lower() == chat_data["player1"]["entry"].lower()) or (chat_data["player2"]["inGame"] and entry.lower() == chat_data["player2"]["entry"].lower()):
 
                         # Give player one point for matching one of the main players
                         player["points"] += NON_MAIN_POINTS
@@ -365,7 +372,9 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
             chat_data["currentRound"] += 1
             chat_data["subRound"] = 0
             chat_bot.send_message(chat_id=chat_id, text="Oops! Last attempt failed! Moving on to next round...", parse_mode=telegram.ParseMode.HTML)
+
             handleNewRound(chat_data, chat_id, chat_bot)
+            return
 
         # Calculate if succeeded
         succeeded = chat_data["player1"]["entry"].lower() == chat_data["player2"]["entry"].lower()
@@ -388,11 +397,12 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
                 handleNewRound(chat_data, chat_id, chat_bot)
             else:
                 chat_data["words"] = (chat_data["player1"]["entry"], chat_data["player2"]["entry"])
-                chat_bot.send_message(chat_id=chat_id, text="Oops! Try again with these two new words! - [%s] and [%s]" % (chat_data["words"]), parse_mode=telegram.ParseMode.HTML)
+                chat_bot.send_message(chat_id=chat_id, text="Attempt #%d failed! Try again with these two new words - <b>%s</b> and <b>%s</b>" % (chat_data["subRound"], chat_data["words"][0], chat_data["words"][1]), parse_mode=telegram.ParseMode.HTML)
+
+                for player in chat_data["playersArray"]:
+                    player["entry"] = None
 
                 sendWordRequestToAll(chat_data, chat_id, chat_bot)
-        for player in chat_data["playersArray"]:
-            player["entry"] = None
 
 def test(update, context):
     chat_id = update.effective_chat.id
