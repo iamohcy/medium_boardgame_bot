@@ -52,6 +52,9 @@ def kick_idle(update, context):
             if (player["inGame"] == True) and (player["entry"] == None):
                 kickPlayer(player["id"], update, context, True)
 
+            if (context.chat_data["gameStarted"] == False):
+                return
+
         checkForAllEntered(chat_data, chat_id, chat_bot)
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /begin to begin the game first!", parse_mode=telegram.ParseMode.HTML)
@@ -116,7 +119,7 @@ def register_user(update, context):
     context.user_data["chat_bot"] = context.bot
 
     if userId not in context.chat_data["playersDict"]:
-        player = {"id":userId, "name":name, "entry":None, "points": 0, "inGame": True}
+        player = {"id":userId, "name":name, "entry":None, "points": 0, "inGame": True, "isMainPlayer":False}
 
         # TEMP
         if name == "Wee Loong":
@@ -241,8 +244,8 @@ def handleNewRound(chat_data, chat_id, chat_bot):
     chat_data["player1"] = mainPlayers[0]
     chat_data["player2"] = mainPlayers[1]
 
-    startText = "<b>Round %d - Attempt %d</b>\n" % (currentRound+1, currentSubRound+1)
-    startText += "Main players: %s and %s\n" % (chat_data["player1"]["name"], chat_data["player2"]["name"])
+    startText = "<b>Round %d - Attempt %d</b>\n\n" % (currentRound+1, currentSubRound+1)
+    startText += "Main players: <b>%s</b> and <b>%s</b>\n\n" % (chat_data["player1"]["name"], chat_data["player2"]["name"])
 
     startText += "Let's get psychic! The two words are: <b>%s</b> and <b>%s</b>" % chat_data["words"]
     chat_bot.send_message(chat_id=chat_id, text=startText, parse_mode=telegram.ParseMode.HTML)
@@ -327,13 +330,13 @@ def stop(update, context):
     context.bot.send_message(chat_id=update.message.chat_id, text=pointsText, parse_mode=telegram.ParseMode.HTML)
 
     # Reset data
-    context.chat_data["gameStarted"] = False
-    context.chat_data["playersArray"] = []
-    context.chat_data["playersDict"] = {}
-    context.chat_data["currentRound"] = 0
-    context.chat_data["subRound"] = 0
-    context.chat_data["seenWords"] = []
-    context.chat_data["nextPlayer1Index"] = 0
+    del context.chat_data["gameStarted"]
+    del context.chat_data["playersArray"]
+    del context.chat_data["playersDict"]
+    del context.chat_data["currentRound"]
+    del context.chat_data["subRound"]
+    del context.chat_data["seenWords"]
+    del context.chat_data["nextPlayer1Index"]
 
 def checkForAllEntered(chat_data, chat_id, chat_bot):
     allEntered = True
