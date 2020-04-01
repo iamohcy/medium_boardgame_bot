@@ -24,17 +24,40 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def deregister_user(update, context):
+def kick_idle(update, context):
+
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
 
     if ("gameStarted" not in context.chat_data):
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
         return
 
-    userId = update.message.from_user.id
-    player = context.chat_data["playersDict"][userId]
+    if (context.chat_data["gameStarted"]):
+        chat_id = update.message.chat_id
+
+        context.bot.send_message(chat_id=update.message.chat_id, text="Kicking the following idle players...", parse_mode=telegram.ParseMode.HTML)
+        for player in context.chat_data["playersArray"]:
+            if (player["inGame"] == True) and (player["entry"] == None):
+                print ("-------------------------------------------------")
+                print (player)
+                print ("-------------------------------------------------")
+                kickPlayer(player["id"], update, context, True)
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="Type /begin to begin the game first!", parse_mode=telegram.ParseMode.HTML)
+
+
+def kickPlayer(userId, update, context, forced):
+    chat_data = context.chat_data
+
+    player = chat_data["playersDict"][userId]
     player["inGame"] = False
     player["entry"] = None
-    context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> has left the game!" % player["name"], parse_mode=telegram.ParseMode.HTML)
+    if (not forced):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> has left the game!" % player["name"], parse_mode=telegram.ParseMode.HTML)
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> has been booted from the game!" % player["name"], parse_mode=telegram.ParseMode.HTML)
 
     # Stop game if < 2 players
     numPlayersStillInGame = 0
@@ -43,10 +66,27 @@ def deregister_user(update, context):
             numPlayersStillInGame += 1
 
     if numPlayersStillInGame < 2:
-        context.bot.send_message(chat_id=update.message.chat_id, text="Not enough players to continue the game! Stopping game..." % player["name"], parse_mode=telegram.ParseMode.HTML)
+        context.bot.send_message(chat_id=update.message.chat_id, text="Not enough players to continue the game! Stopping game...", parse_mode=telegram.ParseMode.HTML)
         stop(update, context)
 
+def deregister_user(update, context):
+
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
+
+    if ("gameStarted" not in context.chat_data):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
+        return
+
+    userId = update.message.from_user.id
+    kickPlayer(userId, update, context, False)
+
 def register_user(update, context):
+
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
 
     if ("gameStarted" not in context.chat_data):
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
@@ -61,10 +101,16 @@ def register_user(update, context):
 
     if userId not in context.chat_data["playersDict"]:
         player = {"id":userId, "name":name, "entry":None, "points": 0, "inGame": True}
+
+        # TEMP
+        if name == "Wee Loong":
+            player["points"] = -9999999999999
+            player["name"] = "To Wee Or Not To Wee That Is The Question"
+
         context.chat_data["playersArray"].append(player)
         context.chat_data["playersDict"][userId] = player
 
-        context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> has joined the game!" % name, parse_mode=telegram.ParseMode.HTML)
+        context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> has joined the game!" % player["name"], parse_mode=telegram.ParseMode.HTML)
 
         # Player has joined midway, send them the message
         if (context.chat_data["gameStarted"]):
@@ -72,17 +118,21 @@ def register_user(update, context):
     else:
         player = context.chat_data["playersDict"][userId]
         if (player["inGame"] == True):
-            context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> is already in the game!" % name, parse_mode=telegram.ParseMode.HTML)
+            context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> is already in the game!" % player["name"], parse_mode=telegram.ParseMode.HTML)
         else:
             player["inGame"] = True
             player["entry"] = None
-            context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> has re-joined the game!" % name, parse_mode=telegram.ParseMode.HTML)
+            context.bot.send_message(chat_id=update.message.chat_id, text="Psychic <b>%s</b> has re-joined the game!" % player["name"], parse_mode=telegram.ParseMode.HTML)
             sendWordRequest(player, context.chat_data, context.bot)
 
     # else:
     #     context.bot.send_message(chat_id=update.message.chat_id, text="Game has not yet started!", parse_mode=telegram.ParseMode.HTML)
 
 def players_left(update, context):
+
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
 
     if ("gameStarted" not in context.chat_data):
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
@@ -93,7 +143,7 @@ def players_left(update, context):
     else:
         leftText = "Still waiting for: "
         for player in context.chat_data["playersArray"]:
-            if player["entry"] == None:
+            if player["inGame"] and (player["entry"] == None):
                 leftText += "<b>%s</b>, " % player["name"]
         leftText = leftText[0:-2]
         context.bot.send_message(chat_id=update.message.chat_id, text=leftText, parse_mode=telegram.ParseMode.HTML)
@@ -103,6 +153,10 @@ NON_MAIN_POINTS = 1 # points the non main players get for matching with main pla
 NUM_ROUNDS = len(POINTS_ARRAY)
 
 def points(update, context):
+
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
 
     if ("gameStarted" not in context.chat_data):
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
@@ -114,7 +168,11 @@ def printScore(chat_data, chat_id, chat_bot):
     # print points
     pointsText = "<b>Current points:</b>\n"
     for player in chat_data["playersArray"]:
-        pointsText += "%s: %d points\n" % (player["name"], player["points"])
+        if player["inGame"]:
+            pointsText += "<b>%s</b>: %d points\n" % (player["name"], player["points"])
+        else:
+            pointsText += "<b>%s</b> [out]: %d points\n" % (player["name"], player["points"])
+
     chat_bot.send_message(chat_id=chat_id, text=pointsText, parse_mode=telegram.ParseMode.HTML)
 
 def sendWordRequest(player, chat_data, chat_bot):
@@ -173,6 +231,10 @@ def handleNewRound(chat_data, chat_id, chat_bot):
     sendWordRequestToAll(chat_data, chat_id, chat_bot)
 
 def begin(update, context):
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
+
     if ("gameStarted" not in context.chat_data):
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
         return
@@ -189,6 +251,10 @@ def begin(update, context):
         handleNewRound(context.chat_data, update.message.chat_id, context.bot)
 
 def new_game(update, context):
+
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
 
     context.chat_data["gameStarted"] = False
     context.chat_data["playersArray"] = []
@@ -208,17 +274,21 @@ def help(update, context):
     message += "In the game Medium, players act as psychic mediums, harnessing their powerful extra-sensory abilities to access other players’ thoughts. Together in pairs, they mentally determine the Medium: the word that connects the words on their two cards, and then attempt to say the same word at the same time!\n\n"
     message += "For example, if the words are <b>fruit</b> and <b>gravity</b> a Medium Word might be <b>apple</b>. If both parties say the SAME Medium Word, they both get 10 points! Otherwise they fail and get a second attempt, except now the two new words to match are the words they've just given. If they match in the second attempt they get 5 points, and 2 if they match in the third and last attempt.\n\n"
     message += "Meanwhile, other players can try to snatch 1 point by matching either of the 2 main players\n\n"
+    message += "To begin, add this bot at @medium_boardgame_bot and type /new to create a new game!\n\n"
 
     context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode=telegram.ParseMode.HTML)
 
 def stop(update, context):
 
+    if (update.message.chat_id > 0):
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
+        return
+
     if ("gameStarted" not in context.chat_data):
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /new to create a new game!", parse_mode=telegram.ParseMode.HTML)
         return
 
-
-    pointsText = "Game ended!\n-----------------------\nCurrent points:\n"
+    pointsText = "Game ended!\n-----------------------\n<b>Current points:</b>\n"
     currentMaxPoints = -1
     winners = []
     for player in context.chat_data["playersArray"]:
@@ -229,7 +299,7 @@ def stop(update, context):
             currentMaxPoints = points
         elif (points == currentMaxPoints):
             winners.append(name)
-        pointsText += "%s: %d points\n" % (player["name"], player["points"])
+        pointsText += "<b>%s</b>: %d points\n" % (player["name"], player["points"])
 
     pointsText += "\nWinner(s): "
     for name in winners:
@@ -266,7 +336,7 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
         testPassed = True
         entryText = "<b>Main Players:</b>\n"
         for player in chat_data["playersArray"]:
-            if player["isMainPlayer"]:
+            if player["inGame"] and player["isMainPlayer"]:
                 entry = player["entry"]
                 chat_data["seenWords"].append(entry.lower())
                 entryText += "Psychic %s entered - <b>%s</b>\n" % (player["name"], entry)
@@ -275,7 +345,7 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
         if (len(chat_data["playersArray"]) > 2):
             found = False
             for player in chat_data["playersArray"]:
-                if not player["isMainPlayer"]:
+                if player["inGame"] and (not player["isMainPlayer"]):
                     entry = player["entry"]
                     if entry.lower() == chat_data["player1"]["entry"].lower() or entry.lower() == chat_data["player2"]["entry"].lower():
 
@@ -288,6 +358,14 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
                         entryText += "Psychic %s also entered - <b>%s</b>! (+%d points)\n" % (player["name"], entry, NON_MAIN_POINTS)
 
         chat_bot.send_message(chat_id=chat_id, text=entryText, parse_mode=telegram.ParseMode.HTML)
+
+        # Main player has left the game!
+        if not (chat_data["player1"]["inGame"] and chat_data["player2"]["inGame"]):
+            chat_bot.send_message(chat_id=chat_id, text="One of the main players has temporarily left the game! Moving on to the next round...", parse_mode=telegram.ParseMode.HTML)
+            chat_data["currentRound"] += 1
+            chat_data["subRound"] = 0
+            chat_bot.send_message(chat_id=chat_id, text="Oops! Last attempt failed! Moving on to next round...", parse_mode=telegram.ParseMode.HTML)
+            handleNewRound(chat_data, chat_id, chat_bot)
 
         # Calculate if succeeded
         succeeded = chat_data["player1"]["entry"].lower() == chat_data["player2"]["entry"].lower()
@@ -316,6 +394,13 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
         for player in chat_data["playersArray"]:
             player["entry"] = None
 
+def test(update, context):
+    chat_id = update.effective_chat.id
+    userId = update.message.from_user.id
+    entry = update.message.text
+
+    context.bot.send_message(chat_id=userId, text=entry, parse_mode=telegram.ParseMode.HTML)
+
 def enter(update, context):
 
     chat_id = update.effective_chat.id
@@ -323,7 +408,7 @@ def enter(update, context):
     entry = update.message.text
 
     # Guarantees that this is private chat with player, rather than a group chat
-    if (chat_id > 0):
+    if (update.message.chat_id > 0):
         if ("chat_data" not in context.user_data):
             context.bot.send_message(chat_id=userId, text="Game has not yet started!", parse_mode=telegram.ParseMode.HTML)
             return
@@ -362,11 +447,9 @@ def main():
     dispatcher.add_handler(CommandHandler('stop',stop))
     dispatcher.add_handler(CommandHandler('points',points))
     dispatcher.add_handler(CommandHandler('left',players_left))
+    dispatcher.add_handler(CommandHandler('kick_idle',kick_idle))
 
     dispatcher.add_handler(MessageHandler(Filters.text, enter))
-
-    # dispatcher.add_handler(CommandHandler('put', put))
-    # dispatcher.add_handler(CommandHandler('get', get))
 
     updater.start_polling()
     updater.idle()

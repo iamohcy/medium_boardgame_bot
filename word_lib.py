@@ -30,7 +30,7 @@ WORD_LIST = ["Hollywood","Well","Foot","New York","Spring","Court","Tube","Point
 "Flute","Carrot","Wake","Fighter","Model","Tokyo","Eye","Mexico","Hand","Swing","Key","Alien",
 "Tower","Poison","Cricket","Cold","Knife","Church","Board","Cloak","Ninja","Olympus","Belt","Light",
 "Death","Stock","Millionaire","Day","Knight","Pie","Bed","Circle","Rose","Change","Cap","Triangle",
-"Drum","Bride","Wagon","Univerity","Hit","Ash","Bass","Astronaut","Doll","Nerve","Coach","Beam","Spoon","Country",
+"Drum","Bride","Wagon","University","Hit","Ash","Bass","Astronaut","Doll","Nerve","Coach","Beam","Spoon","Country",
 "Nose","King Arthur","Stamp","Camp","Brain","Leaf","Tutu","Coast","Lunch","Thunder","Potato","Desk","Onion","Elephant",
 "Anchor","Cowboy","Flood","Mohawk","Santa","Pitcher","Barbecue","Leather","Skates","Musketeer","Snap","Saddle","Genie","Mark",
 "Shoulder","Governor","Manicure","Anthem","Halloween","Newton","Balloon","Fiddle","Craft","Glacier","Cake","Rat","Tank","Blind",
