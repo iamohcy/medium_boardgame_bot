@@ -10,11 +10,17 @@ TOKEN = "953155266:AAF-g0tEk7qMCZwDxheNHQZD3oGMXn5w3G0"
 # 2) Fixed issue where original words could be re-used
 # 3) Fixed issue where multiple /in commands would screw things update
 # 4) Fixed issue where empty or multi-word entries were allowed
-# 5) Added an "/out" command to allow for temporarily leaving the game
-# 6) Modified "/help" command to print more useful information
-# 7) Added reminder for new players to add the bot at @medium_boardgame_bot
-# 8) Game now stops when enough players have left
-# 9) No longer need /enter command
+
+# Medium Tele Bot v1.0 Beta is done!
+# 1) Added a "/left" command to see which players have yet to enter their words
+# 2) Added a "/points" command to see current point tallies
+# 3) Added an "/out" command to allow for people to leave the game
+# 4) Modified "/help" command to print more useful information
+# 5) Added reminder for new players to add the bot at @medium_boardgame_bot
+# 6) Game now stops when enough players have left
+# 7) **No longer need /enter command, can just type directly in to the bot chat**
+# 8) You can no kick idle players using the kick_idle command
+# 9) Various bug fixes and QOL improvements
 
 import telegram
 from telegram.ext import Updater, MessageHandler, CommandHandler, Filters
@@ -25,6 +31,10 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def kick_idle(update, context):
+
+    chat_data = context.chat_data
+    chat_id = update.message.chat_id
+    chat_bot = context.bot
 
     if (update.message.chat_id > 0):
         context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
@@ -40,10 +50,9 @@ def kick_idle(update, context):
         context.bot.send_message(chat_id=update.message.chat_id, text="Kicking the following idle players...", parse_mode=telegram.ParseMode.HTML)
         for player in context.chat_data["playersArray"]:
             if (player["inGame"] == True) and (player["entry"] == None):
-                print ("-------------------------------------------------")
-                print (player)
-                print ("-------------------------------------------------")
                 kickPlayer(player["id"], update, context, True)
+
+        checkForAllEntered(chat_data, chat_id, chat_bot)
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text="Type /begin to begin the game first!", parse_mode=telegram.ParseMode.HTML)
 
@@ -71,12 +80,13 @@ def kickPlayer(userId, update, context, forced):
         context.bot.send_message(chat_id=update.message.chat_id, text="Not enough players to continue the game! Stopping game...", parse_mode=telegram.ParseMode.HTML)
         stop(update, context)
         return
-    else:
-        checkForAllEntered(chat_data, chat_id, chat_bot)
 
 def deregister_user(update, context):
+    chat_data = context.chat_data
+    chat_id = update.message.chat_id
+    chat_bot = context.bot
 
-    if (update.message.chat_id > 0):
+    if (chat_id > 0):
         context.bot.send_message(chat_id=update.message.chat_id, text="This command can only be sent in a group channel!", parse_mode=telegram.ParseMode.HTML)
         return
 
@@ -86,6 +96,7 @@ def deregister_user(update, context):
 
     userId = update.message.from_user.id
     kickPlayer(userId, update, context, False)
+    checkForAllEntered(chat_data, chat_id, chat_bot)
 
 def register_user(update, context):
 
@@ -187,7 +198,8 @@ def sendWordRequest(player, chat_data, chat_bot):
 
 def sendWordRequestToAll(chat_data, chat_id, chat_bot):
     for player in chat_data["playersArray"]:
-        sendWordRequest(player, chat_data, chat_bot)
+        if player["inGame"]:
+            sendWordRequest(player, chat_data, chat_bot)
 
 def handleNewRound(chat_data, chat_id, chat_bot):
 
@@ -335,7 +347,6 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
 
     if (allEntered):
         if enteredCount <= 1:
-            chat_bot.send_message(chat_id=chat_data["chat_id"], text="We need at least 2 people to enter entries!", parse_mode=telegram.ParseMode.HTML)
             return
 
         chat_bot.send_message(chat_id=chat_data["chat_id"], text="Everyone has entered their words!", parse_mode=telegram.ParseMode.HTML)
@@ -371,8 +382,6 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
             chat_bot.send_message(chat_id=chat_id, text="One of the main players has temporarily left the game! Moving on to the next round...", parse_mode=telegram.ParseMode.HTML)
             chat_data["currentRound"] += 1
             chat_data["subRound"] = 0
-            chat_bot.send_message(chat_id=chat_id, text="Oops! Last attempt failed! Moving on to next round...", parse_mode=telegram.ParseMode.HTML)
-
             handleNewRound(chat_data, chat_id, chat_bot)
             return
 
@@ -397,7 +406,7 @@ def checkForAllEntered(chat_data, chat_id, chat_bot):
                 handleNewRound(chat_data, chat_id, chat_bot)
             else:
                 chat_data["words"] = (chat_data["player1"]["entry"], chat_data["player2"]["entry"])
-                chat_bot.send_message(chat_id=chat_id, text="Attempt #%d failed! Try again with these two new words - <b>%s</b> and <b>%s</b>" % (chat_data["subRound"], chat_data["words"][0], chat_data["words"][1]), parse_mode=telegram.ParseMode.HTML)
+                chat_bot.send_message(chat_id=chat_id, text="Attempt %d failed! Try again with these two new words - <b>%s</b> and <b>%s</b>" % (chat_data["subRound"], chat_data["words"][0], chat_data["words"][1]), parse_mode=telegram.ParseMode.HTML)
 
                 for player in chat_data["playersArray"]:
                     player["entry"] = None
@@ -427,18 +436,22 @@ def enter(update, context):
         chat_bot = context.user_data["chat_bot"]
         chat_id = context.user_data["chat_id"]
         if ("gameStarted" in chat_data) and (chat_data["gameStarted"]):
+            player = chat_data["playersDict"][userId]
+            if player["inGame"]:
+                if entry.strip() == "":
+                    context.bot.send_message(chat_id=userId, text="Empty entry detected, please try again!" % entry, parse_mode=telegram.ParseMode.HTML)
+                elif len(entry.split()) > 1:
+                    context.bot.send_message(chat_id=userId, text="You can only send <b>one</b> word!" % entry, parse_mode=telegram.ParseMode.HTML)
+                elif entry.lower() not in chat_data["seenWords"]:
+                    player["entry"] = entry
+                    context.bot.send_message(chat_id=userId, text="Received! - [%s]" % entry, parse_mode=telegram.ParseMode.HTML)
+                else:
+                    context.bot.send_message(chat_id=userId, text="The word <b>%s</b> has been seen this round already!" % entry, parse_mode=telegram.ParseMode.HTML)
 
-            if entry.strip() == "":
-                context.bot.send_message(chat_id=userId, text="Empty entry detected, please try again!" % entry, parse_mode=telegram.ParseMode.HTML)
-            elif len(entry.split()) > 1:
-                context.bot.send_message(chat_id=userId, text="You can only send <b>one</b> word!" % entry, parse_mode=telegram.ParseMode.HTML)
-            elif entry.lower() not in chat_data["seenWords"]:
-                chat_data["playersDict"][userId]["entry"] = entry
-                context.bot.send_message(chat_id=userId, text="Received! - [%s]" % entry, parse_mode=telegram.ParseMode.HTML)
+                checkForAllEntered(chat_data, chat_id, chat_bot)
             else:
-                context.bot.send_message(chat_id=userId, text="The word <b>%s</b> has been seen this round already!" % entry, parse_mode=telegram.ParseMode.HTML)
+                context.bot.send_message(chat_id=userId, text="You are currently not in the game! Type /in in the group chat to rejoin the game." % entry, parse_mode=telegram.ParseMode.HTML)
 
-            checkForAllEntered(chat_data, chat_id, chat_bot)
         else:
             context.bot.send_message(chat_id=userId, text="Game has not yet started!", parse_mode=telegram.ParseMode.HTML)
 
